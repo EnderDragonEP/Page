@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212; /* Dark background */
+            color: #e0e0e0; /* Light text */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #weatherContainer {
+            border: 2px solid #bb86fc; /* Purple border */
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #1e1e1e; /* Darker container background */
+            width: 300px;
+            text-align: center;
+            color: #ffffff; /* White text */
+        }
+        #reloadButton {
+            margin: 10px 0;
+            padding: 8px 15px;
+            background-color: #bb86fc; /* Purple button */
+            color: #121212; /* Dark text on button */
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #reloadButton:hover {
+            background-color: #9b59b6; /* Darker purple on hover */
+        }
+        select {
+            padding: 5px;
+            border-radius: 5px;
+            margin-top: 10px;
+            background-color: #2e2e2e; /* Darker dropdown */
+            color: #ffffff; /* White text in dropdown */
+            border: 1px solid #bb86fc; /* Purple border */
+        }
+        #city, #weather, #temperature, #lastUpdate {
+            margin: 10px 0;
+            font-size: 1.2em;
+        }
+        #lastUpdate {
+            font-size: 0.9em;
+            color: #a0a0a0; /* Lighter gray */
+        }
+        #weatherProvider, #locationProvider {
+            font-size: 0.9em;
+            color: #a0a0a0;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="weatherContainer">
+        <h1>Weather ☂️</h1>
+        <p id="city">City: --</p>
+        <p id="weather">Weather: --</p>
+        <p id="temperature">Temperature: --</p>
+        <p id="lastUpdate">Last update: --</p>
+        <button id="reloadButton">Reload Weather</button>
+        <div>
+            <label for="autoUpdate">Auto Update: </label>
+            <select id="autoUpdate">
+                <option value="0">Off</option>
+                <option value="600000">10 Minutes</option>
+                <option value="1800000">30 Minutes</option>
+                <option value="3600000">1 Hours</option>
+                <option value="7200000">2 Hours</option>
+                <option value="10800000">3 Hours</option>
+            </select>
+            <p id="weatherProvider">Weather Provider: Open-Meteo</p>
+            <p id="locationProvider">Location Provider: Nominatim</p>
+        </div>
+    </div>
+
+    <script>
+        const latitude = 23.1810514;
+        const longitude = 120.2002598;
+    
+        const weatherAPI = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`;
+        const locationAPI = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`;
+        
+        const cityDisplay = document.getElementById("city");
+        const weatherDisplay = document.getElementById("weather");
+        const temperatureDisplay = document.getElementById("temperature");
+
+        const lastUpdateDisplay = document.getElementById("lastUpdate");
+
+        const reloadButton = document.getElementById("reloadButton");
+        const autoUpdateDropdown = document.getElementById("autoUpdate");
+        
+        let autoUpdateInterval;
+    
+        // Function to fetch and display city name using Nominatim API
+        function fetchCityName() {
+            fetch(locationAPI)
+                .then(response => response.json())
+                .then(data => {
+                    const city = data.address.city || data.address.town || data.address.village || "Unknown City";
+                    cityDisplay.textContent = `City: ${city}`;
+                    console.info("Fetch City Data:\n", data);
+                    console.info("Current City:", city);
+                })
+                .catch(error => {
+                    cityDisplay.textContent = "Error fetching city";
+                    console.error(error);
+                });
+        }
+    
+        // Function to fetch and display weather data using Open-Meteo API
+        function fetchWeather() {
+            fetch(weatherAPI)
+                .then(response => response.json())
+                .then(data => {
+                    const { temperature, weathercode } = data.current_weather;
+                    const weatherDescription = weatherCodeToDescription(weathercode);
+                    weatherDisplay.textContent = `Weather: ${weatherDescription}`;
+                    temperatureDisplay.textContent = `Temperature: ${temperature}°C`;;
+                    console.info("Fetch Weather Data:\n", data);
+                    console.info("Current Weather:", weathercode," = ", weatherDescription, "\nTemperature:", temperature);
+                    updateLastUpdateTime();
+                })
+                .catch(error => {
+                    weatherDisplay.textContent = "Error fetching weather";
+                    temperatureDisplay.textContent = "Error fetching temperature";
+                    console.error(error);
+                });
+        }
+    
+        // Convert weathercode to description
+        function weatherCodeToDescription(code) {
+            const descriptions = {
+                0: "Clear Sky",
+                1: "Mainly Clear",
+                2: "Partly Cloudy",
+                3: "Overcast",
+                45: "Fog",
+                48: "Rime Fog",
+                51: "Drizzle - Light",
+                53: "Drizzle - Moderate",
+                55: "Drizzle - Dense",
+                56: "Freezing Drizzle - Light",
+                57: "Freezing Drizzle - Dense",
+                61: "Rain - Slight",
+                63: "Rain - Moderate",
+                65: "Rain - Heavy",
+                66: "Freezing Rain - Light",
+                67: "Freezing Rain - Heavy",
+                71: "Snowfall - Slight",
+                73: "Snowfall - Moderate",
+                75: "Snowfall - Heavy",
+                77: "Snow Grains",
+                80: "Rain Showers - Slight",
+                81: "Rain Showers - Moderate",
+                82: "Rain Showers - Violent",
+                85: "Snow Showers - Slight",
+                86: "Snow Showers - Heavy"
+            };
+            return descriptions[code] || "Unknown Weather";
+        }
+    
+        // Update the last update time
+        function updateLastUpdateTime() {
+            const now = new Date();
+            const formattedTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            lastUpdateDisplay.textContent = `Last update: ${formattedTime}`;
+            console.log("Last Update Time:", formattedTime);
+        }
+    
+        // Reload button functionality
+        reloadButton.addEventListener("click", () => {
+            console.warn("Manual Reload Triggered!");
+            fetchCityName();
+            fetchWeather();
+            resetAutoUpdate();
+        });
+    
+        // Auto update functionality
+        autoUpdateDropdown.addEventListener("change", function() {
+            console.log("New Auto Update Value:", updateTime);
+            resetAutoUpdate();
+        });
+
+        // Reset auto-update interval
+        function resetAutoUpdate() {
+            clearInterval(autoUpdateInterval);
+            const updateTime = parseInt(autoUpdateDropdown.value);
+            if (updateTime > 0) {
+                autoUpdateInterval = setInterval(() => {
+                    fetchCityName();
+                    fetchWeather();
+                }, updateTime);
+            }
+        }
+    
+        // Initial fetch
+        fetchCityName();
+        fetchWeather();
+    </script>    
+</body>
+</html>
